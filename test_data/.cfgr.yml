@@ -1,0 +1,7 @@
+---
+target: ./target
+source: ./source
+
+ignore:
+  - etc/ssl/
+  - logs/
