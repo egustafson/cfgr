@@ -52,9 +52,11 @@ def dbg(ctx):
     click.echo("debug:")
     cx = context.CfgrCtx(ctx.obj)
     click.echo(cx)
-    srctree = filetree.FileTree(cx.source)
-    click.echo(f"src: {srctree}")
-    tgttree = filetree.FileTree(cx.target)
+    click.echo("source files:")
+    for sf in cx.source_files:
+        click.echo(f"  {sf}")
+    
+    tgttree = filetree.FileTree(cx.target_dir)
     click.echo(f"tgt: {tgttree}")
 
 
