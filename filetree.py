@@ -1,12 +1,8 @@
-# -*- mode: python; coding: utf-8 -*-
-
-import pathlib
 import os
 import os.path
 
 
 class FileTree:
-
     def __init__(self, trunk):
         self._trunk = trunk
         fl = []

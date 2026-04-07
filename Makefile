@@ -1,18 +1,21 @@
 # -*- mode: Makefile -*-
 
-.PHONY: dev_install install init test
+.PHONY: dev_install install init test lint
 
 install:
-	echo "pip install --user ."
+	uv pip install .
 
 dev_install:
-	pip install --editable .
+	uv sync
 
 init:
-	pip install -r requirements
+	uv sync
 
 test:
-	py.test tests
+	uv run pytest tests
+
+lint:
+	uv run ruff check . && uv run ruff format --check .
 
 clean:
-	-rm -rf cfgr.egg-info __pycache__
+	-rm -rf cfgr.egg-info __pycache__ .venv
