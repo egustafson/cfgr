@@ -1,9 +1,11 @@
+import os
 from importlib.metadata import version as pkg_version
 
 import click
 
 import context
 import filetree
+import ops
 
 
 @click.group()
@@ -19,30 +21,86 @@ def cli(ctx, verbose, dir):
 
 
 @click.command()
-def version():
+def about():
     click.echo(pkg_version("cfgr"))
 
 
 @click.command()
+@click.option("--short", "-s", is_flag=True, help="List differing files without showing line changes.")
+@click.option("--no-ignore", "-I", is_flag=True, help="Include files that match ignore patterns.")
 @click.pass_context
-def diff(ctx):
-    click.echo("diff -- wip")
+def diff(ctx, short, no_ignore):
+    cx = context.CfgrCtx(ctx.obj)
+    pairs = ops.get_tracked_pairs(cx, no_ignore=no_ignore)
+    for abs_src, abs_tgt, rel in pairs:
+        if ops.files_differ(abs_src, abs_tgt):
+            if short:
+                click.echo(rel)
+            else:
+                output = ops.unified_diff(abs_src, abs_tgt, label_src=rel, label_tgt=rel)
+                if output:
+                    click.echo(output, nl=False)
 
 
 @click.command()
+@click.option("--force", is_flag=True, help="Copy files unconditionally. Requires explicit file paths.")
+@click.argument("files", nargs=-1)
 @click.pass_context
-def pull(ctx):
-    click.echo("pull -- wip")
+def pull(ctx, force, files):
+    if force and not files:
+        raise click.UsageError("--force requires explicit file paths.")
+    cx = context.CfgrCtx(ctx.obj)
+    if files:
+        pairs = []
+        for f in files:
+            abs_src = os.path.join(cx.source_dir, f)
+            abs_tgt = os.path.join(cx.target_dir, f)
+            pairs.append((abs_src, abs_tgt, f))
+    else:
+        pairs = ops.get_tracked_pairs(cx)
+    for abs_src, abs_tgt, rel in pairs:
+        should_copy = force or ops.files_differ(abs_src, abs_tgt)
+        if should_copy:
+            if not os.path.isfile(abs_tgt):
+                continue
+            if force and cx.is_ignored(rel):
+                if click.confirm(f"'{rel}' matches an ignore pattern. Remove from .cfgr.yml ignore list?"):
+                    ops.unignore_patterns(".cfgr.yml", [rel])
+            ops.copy_file(abs_tgt, abs_src)
+            if cx.verbose:
+                click.echo(f"pulled: {rel}")
 
 
 @click.command()
+@click.option("--force", is_flag=True, help="Copy files unconditionally. Requires explicit file paths.")
+@click.argument("files", nargs=-1)
 @click.pass_context
-def push(ctx):
+def push(ctx, force, files):
     #
     # - check for write permissions early
     # - stash any changes for a rollback.
     #
-    click.echo("push -- wip")
+    if force and not files:
+        raise click.UsageError("--force requires explicit file paths.")
+    cx = context.CfgrCtx(ctx.obj)
+    if files:
+        pairs = []
+        for f in files:
+            abs_src = os.path.join(cx.source_dir, f)
+            abs_tgt = os.path.join(cx.target_dir, f)
+            pairs.append((abs_src, abs_tgt, f))
+    else:
+        pairs = ops.get_tracked_pairs(cx)
+    for abs_src, abs_tgt, rel in pairs:
+        if force or ops.files_differ(abs_src, abs_tgt):
+            if not os.path.isfile(abs_src):
+                continue
+            if force and cx.is_ignored(rel):
+                if click.confirm(f"'{rel}' matches an ignore pattern. Remove from .cfgr.yml ignore list?"):
+                    ops.unignore_patterns(".cfgr.yml", [rel])
+            ops.copy_file(abs_src, abs_tgt)
+            if cx.verbose:
+                click.echo(f"pushed: {rel}")
 
 
 @click.command(hidden=True)
@@ -59,7 +117,7 @@ def dbg(ctx):
     click.echo(f"tgt: {tgttree}")
 
 
-cli.add_command(version)
+cli.add_command(about)
 cli.add_command(diff)
 cli.add_command(pull)
 cli.add_command(push)

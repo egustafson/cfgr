@@ -1,6 +1,6 @@
 [project]
 name = "cfgr"
-version = "0.1.0"
+version = "0.9.0"
 description = "Config file manager and diff"
 authors = [
     { name = "Eric Gustafson", email = "ericg@elfwerks.io" },

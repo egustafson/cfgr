@@ -40,7 +40,7 @@ ignore:
 cfgr [--dir PATH] <command>
 
 Commands:
-  version   Print the installed version
+  about      Print program information
   diff      Show differences between source and target
   pull      Pull changes from target into source
   push      Push changes from source to target

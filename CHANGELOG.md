@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-07
+
+### Added
+- `diff` command with `-s`/`--short` (list changed files only) and `-I`/`--no-ignore` (bypass ignore patterns) options
+- `push` command copies changed files from source to target; accepts explicit file paths and a `--force` flag (requires explicit paths); `--force` on an ignored file prompts to remove the ignore pattern from `.cfgr.yml`
+- `pull` command mirrors `push` in the reverse direction (target → source) with the same options
+- Support for child `.cfgr.yml` files in source subdirectories; child configs may add per-subdirectory `ignore` patterns and must not specify a `target` field (error raised if they do)
+- `ops.py` module with shared utilities: `files_differ`, `unified_diff`, `get_tracked_pairs`, `copy_file`, `unignore_patterns`
+
 ### Changed
+- `version` subcommand renamed to `about` (forward-compatible name for future program-info output)
+- `context.py` refactored: child `.cfgr.yml` files are now loaded and their ignore patterns are combined with root-level patterns when determining which files to track
 - Migrated project packaging from `setup.py` / `requirements.txt` to `pyproject.toml` using `uv` as the package manager
 - Switched build backend to `hatchling`
 - Updated `Makefile` targets to use `uv` commands; added `lint` target
@@ -39,5 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cfgr` CLI entry point
 - Diff, push, and pull functionality between managed config files and deployed locations
 
-[Unreleased]: https://github.com/egustafson/cfgr/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/egustafson/cfgr/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/egustafson/cfgr/compare/v0.1.0...v0.9.0
 [0.1.0]: https://github.com/egustafson/cfgr/releases/tag/v0.1.0
