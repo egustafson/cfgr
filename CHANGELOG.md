@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `diff` command: colorized side-by-side output by default when stdout is a terminal (via `ydiff>=1.5`)
+- `diff --unified` / `-u`: output plain unified diff format instead of side-by-side
+- `diff --nocolor`: disable ANSI color output regardless of TTY; color is automatically disabled when stdout is not a terminal
+- `diff --pager` / `--no-pager`: opt-in to pipe output through `less` using ydiff's pager integration (default: off)
+- `ops.render_diff()`: new function wrapping ydiff's `DiffParser`/`DiffMarker` API
+- `ydiff>=1.5` runtime dependency
+
+### Changed
+- `diff` command default output changed from plain unified diff to colorized side-by-side; use `--unified --nocolor` for original plain behavior
+- `README.md`: added `diff` options table and output-mode description
+
 ### Fixed
 - Wrapped long `@click.option` decorator lines and `click.confirm` calls in `cfgr.py` to satisfy the 100-character line-length limit enforced by `ruff`
 - Corrected import sort order in `ops.py` and `tests/test_cfgr.py` per `ruff` `I001` rules

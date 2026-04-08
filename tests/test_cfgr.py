@@ -37,7 +37,7 @@ def test_about():
 def test_diff_shows_diffs(tmp_path):
     wd = _setup(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(cli, ["-d", wd, "diff"])
+    result = runner.invoke(cli, ["-d", wd, "diff", "--unified", "--nocolor"])
     assert result.exit_code == 0
     # Both changed files should appear in unified diff output
     assert "base.ini" in result.output
@@ -62,7 +62,7 @@ def test_diff_short(tmp_path):
 def test_diff_no_ignore(tmp_path):
     wd = _setup(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(cli, ["-d", wd, "diff", "-I"])
+    result = runner.invoke(cli, ["-d", wd, "diff", "-I", "--unified", "--nocolor"])
     assert result.exit_code == 0
     # logs/logfile.log only appears when -I overrides ignore patterns
     assert "logfile.log" in result.output
@@ -92,6 +92,34 @@ def test_diff_short_no_ignore(tmp_path):
     assert result.exit_code == 0
     assert "logfile.log" in result.output
     assert "---" not in result.output
+
+
+def test_diff_side_by_side(tmp_path):
+    wd = _setup(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "--nocolor"])
+    assert result.exit_code == 0
+    assert "base.ini" in result.output
+    assert "extension2.cfg" in result.output
+    # In side-by-side mode, old and new values appear on the same output line
+    assert any("debug" in line and "info" in line for line in result.output.splitlines())
+
+
+def test_diff_unified_flag(tmp_path):
+    wd = _setup(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "--unified", "--nocolor"])
+    assert result.exit_code == 0
+    assert "---" in result.output
+    assert "+++" in result.output
+
+
+def test_diff_nocolor_no_ansi(tmp_path):
+    wd = _setup(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "--nocolor"])
+    assert result.exit_code == 0
+    assert "\x1b[" not in result.output
 
 
 # ---------------------------------------------------------------------------

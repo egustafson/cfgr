@@ -11,6 +11,7 @@ dependencies = [
     "click>=8.1.1",
     "PyYAML>=6.0.2",
     "pathspec>=0.12.1",
+    "ydiff>=1.5",
 ]
 
 [project.urls]

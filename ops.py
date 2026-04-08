@@ -1,6 +1,7 @@
 import difflib
 import os
 import os.path
+import re
 import shutil
 
 from yaml import dump, load
@@ -44,6 +45,33 @@ def unified_diff(src_path, tgt_path, label_src=None, label_tgt=None):
     tgt_lines = read_lines(tgt_path)
     lines = list(difflib.unified_diff(src_lines, tgt_lines, fromfile=label_src, tofile=label_tgt))
     return "".join(lines)
+
+
+def render_diff(
+    src_path, tgt_path, *, side_by_side=True, color=True, label_src=None, label_tgt=None
+):
+    """Return a rendered diff string using ydiff.
+
+    side_by_side=True renders a side-by-side layout; False renders unified format.
+    color=True includes ANSI color codes; False strips them.
+    Returns an empty string when the files are identical or both absent.
+    """
+    import ydiff
+
+    text = unified_diff(src_path, tgt_path, label_src=label_src, label_tgt=label_tgt)
+    if not text:
+        return ""
+
+    stream = [line.encode("utf-8") for line in text.splitlines(keepends=True)]
+    marker = ydiff.DiffMarker(side_by_side=side_by_side, width=0, wrap=True)
+    parts = []
+    for diff in ydiff.DiffParser(stream).parse():
+        for line in marker.markup(diff):
+            parts.append(line)
+    result = "".join(parts)
+    if not color:
+        result = re.sub(r"\x1b\[[0-9;]*m", "", result)
+    return result
 
 
 def get_tracked_pairs(cx, no_ignore=False):

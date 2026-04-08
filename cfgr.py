@@ -1,7 +1,10 @@
 import os
+import sys
+import types
 from importlib.metadata import version as pkg_version
 
 import click
+import ydiff
 
 import context
 import filetree
@@ -30,18 +33,53 @@ def about():
     "--short", "-s", is_flag=True, help="List differing files without showing line changes."
 )
 @click.option("--no-ignore", "-I", is_flag=True, help="Include files that match ignore patterns.")
+@click.option(
+    "--unified", "-u", is_flag=True, help="Output unified diff format instead of side-by-side."
+)
+@click.option("--nocolor", is_flag=True, help="Disable colorized output.")
+@click.option("--pager/--no-pager", default=False, help="Pipe output through less.")
 @click.pass_context
-def diff(ctx, short, no_ignore):
+def diff(ctx, short, no_ignore, unified, nocolor, pager):
     cx = context.CfgrCtx(ctx.obj)
     pairs = ops.get_tracked_pairs(cx, no_ignore=no_ignore)
-    for abs_src, abs_tgt, rel in pairs:
-        if ops.files_differ(abs_src, abs_tgt):
-            if short:
-                click.echo(rel)
-            else:
-                output = ops.unified_diff(abs_src, abs_tgt, label_src=rel, label_tgt=rel)
-                if output:
-                    click.echo(output, nl=False)
+    use_color = sys.stdout.isatty() and not nocolor
+    if pager and sys.stdout.isatty() and use_color:
+        # Collect all unified diff text and feed to ydiff's pager
+        all_lines = []
+        for abs_src, abs_tgt, rel in pairs:
+            if ops.files_differ(abs_src, abs_tgt):
+                text = ops.unified_diff(abs_src, abs_tgt, label_src=rel, label_tgt=rel)
+                if text:
+                    all_lines.extend(
+                        line.encode("utf-8") for line in text.splitlines(keepends=True)
+                    )
+        if all_lines:
+            opts = types.SimpleNamespace(
+                side_by_side=not unified,
+                width=0,
+                wrap=True,
+                theme="default",
+                tab_width=8,
+                pager=None,
+                pager_options=None,
+            )
+            ydiff.markup_to_pager(iter(all_lines), opts)
+    else:
+        for abs_src, abs_tgt, rel in pairs:
+            if ops.files_differ(abs_src, abs_tgt):
+                if short:
+                    click.echo(rel)
+                else:
+                    output = ops.render_diff(
+                        abs_src,
+                        abs_tgt,
+                        side_by_side=(not unified),
+                        color=use_color,
+                        label_src=rel,
+                        label_tgt=rel,
+                    )
+                    if output:
+                        click.echo(output, nl=False)
 
 
 @click.command()

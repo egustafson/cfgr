@@ -41,10 +41,25 @@ cfgr [--dir PATH] <command>
 
 Commands:
   about      Print program information
-  diff      Show differences between source and target
-  pull      Pull changes from target into source
-  push      Push changes from source to target
+  diff       Show differences between source and target
+  pull       Pull changes from target into source
+  push       Push changes from source to target
 ```
+
+### diff options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--short` | `-s` | List changed filenames only, no line-level diff |
+| `--no-ignore` | `-I` | Include files that match ignore patterns |
+| `--unified` | `-u` | Output unified diff format instead of side-by-side |
+| `--nocolor` | | Disable colorized output (implied when stdout is not a TTY) |
+| `--pager` | | Pipe output through `less` |
+
+By default `cfgr diff` renders a colorized side-by-side diff when stdout is a
+terminal. Color is automatically disabled when output is piped or redirected.
+Use `--unified --nocolor` to reproduce plain unified diff output suitable for
+scripting or patch files.
 
 ## Development
 
