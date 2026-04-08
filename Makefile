@@ -1,15 +1,17 @@
 # -*- mode: Makefile -*-
 
-.PHONY: dev_install install init test lint
+.PHONY: dev_install install init test lint pre-release clean
 
 install:
-	uv pip install .
+	uv tool install .
 
 dev_install:
 	uv sync
 
 init:
 	uv sync
+
+pre-release: lint test
 
 test:
 	uv run pytest tests
