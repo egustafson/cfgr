@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Wrapped long `@click.option` decorator lines and `click.confirm` calls in `cfgr.py` to satisfy the 100-character line-length limit enforced by `ruff`
+- Corrected import sort order in `ops.py` and `tests/test_cfgr.py` per `ruff` `I001` rules
+
 ## [0.9.0] - 2026-04-07
 
 ### Added

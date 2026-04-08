@@ -5,7 +5,6 @@ from click.testing import CliRunner
 
 from cfgr import cli
 
-
 TEST_DATA = os.path.join(os.path.dirname(__file__), "..", "test_data")
 
 

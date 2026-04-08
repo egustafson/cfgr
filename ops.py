@@ -6,9 +6,10 @@ import shutil
 from yaml import dump, load
 
 try:
-    from yaml import CLoader as Loader, CDumper as Dumper
+    from yaml import CDumper as Dumper
+    from yaml import CLoader as Loader
 except ImportError:
-    from yaml import Loader, Dumper
+    from yaml import Dumper, Loader
 
 CFGR_CFG = ".cfgr.yml"
 
@@ -41,9 +42,7 @@ def unified_diff(src_path, tgt_path, label_src=None, label_tgt=None):
 
     src_lines = read_lines(src_path)
     tgt_lines = read_lines(tgt_path)
-    lines = list(
-        difflib.unified_diff(src_lines, tgt_lines, fromfile=label_src, tofile=label_tgt)
-    )
+    lines = list(difflib.unified_diff(src_lines, tgt_lines, fromfile=label_src, tofile=label_tgt))
     return "".join(lines)
 
 

@@ -26,7 +26,9 @@ def about():
 
 
 @click.command()
-@click.option("--short", "-s", is_flag=True, help="List differing files without showing line changes.")
+@click.option(
+    "--short", "-s", is_flag=True, help="List differing files without showing line changes."
+)
 @click.option("--no-ignore", "-I", is_flag=True, help="Include files that match ignore patterns.")
 @click.pass_context
 def diff(ctx, short, no_ignore):
@@ -43,7 +45,9 @@ def diff(ctx, short, no_ignore):
 
 
 @click.command()
-@click.option("--force", is_flag=True, help="Copy files unconditionally. Requires explicit file paths.")
+@click.option(
+    "--force", is_flag=True, help="Copy files unconditionally. Requires explicit file paths."
+)
 @click.argument("files", nargs=-1)
 @click.pass_context
 def pull(ctx, force, files):
@@ -64,7 +68,8 @@ def pull(ctx, force, files):
             if not os.path.isfile(abs_tgt):
                 continue
             if force and cx.is_ignored(rel):
-                if click.confirm(f"'{rel}' matches an ignore pattern. Remove from .cfgr.yml ignore list?"):
+                msg = f"'{rel}' matches an ignore pattern. Remove from .cfgr.yml ignore list?"
+                if click.confirm(msg):
                     ops.unignore_patterns(".cfgr.yml", [rel])
             ops.copy_file(abs_tgt, abs_src)
             if cx.verbose:
@@ -72,7 +77,9 @@ def pull(ctx, force, files):
 
 
 @click.command()
-@click.option("--force", is_flag=True, help="Copy files unconditionally. Requires explicit file paths.")
+@click.option(
+    "--force", is_flag=True, help="Copy files unconditionally. Requires explicit file paths."
+)
 @click.argument("files", nargs=-1)
 @click.pass_context
 def push(ctx, force, files):
@@ -96,7 +103,8 @@ def push(ctx, force, files):
             if not os.path.isfile(abs_src):
                 continue
             if force and cx.is_ignored(rel):
-                if click.confirm(f"'{rel}' matches an ignore pattern. Remove from .cfgr.yml ignore list?"):
+                msg = f"'{rel}' matches an ignore pattern. Remove from .cfgr.yml ignore list?"
+                if click.confirm(msg):
                     ops.unignore_patterns(".cfgr.yml", [rel])
             ops.copy_file(abs_src, abs_tgt)
             if cx.verbose:
