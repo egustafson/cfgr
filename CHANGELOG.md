@@ -14,7 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `Makefile`: `install` target updated to use `uv tool install .` (was `uv pip install .`)
-- `Makefile`: added `pre-release` target (runs `lint` then `test`) and `clean` to `.PHONY`
+- `Makefile`: added `pre-release` target (runs `lint` then `test`), `build` target (`uv build --wheel`), `dist` added to `clean`, and `clean`/`build` added to `.PHONY`
+- `Makefile`: `clean` target now also removes `dist/`
+
+### Added
+- GitHub Actions `release` workflow (`.github/workflows/release.yml`): triggered on release publication; runs lint, tests, builds the wheel, and uploads it as a release asset
 
 ## [0.9.0] - 2026-04-07
 
