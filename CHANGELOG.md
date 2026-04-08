@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wrapped long `@click.option` decorator lines and `click.confirm` calls in `cfgr.py` to satisfy the 100-character line-length limit enforced by `ruff`
 - Corrected import sort order in `ops.py` and `tests/test_cfgr.py` per `ruff` `I001` rules
 - Added explicit `[tool.hatch.build.targets.wheel]` include list to `pyproject.toml` so that `context.py`, `filetree.py`, and `ops.py` are packaged alongside `cfgr.py`; previously only `cfgr.py` was included, causing `ModuleNotFoundError` when the tool was installed via `uv tool install`
+- Fixed CI test failures: tests referenced `app.log` (a gitignored local-only file) rather than the committed `logfile.log`; updated `test_diff_no_ignore`, `test_diff_ignored_file_excluded_by_default`, and `test_diff_short_no_ignore` to assert against `logfile.log`
 
 ### Changed
 - `Makefile`: `install` target updated to use `uv tool install .` (was `uv pip install .`)

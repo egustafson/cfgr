@@ -64,8 +64,8 @@ def test_diff_no_ignore(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "diff", "-I"])
     assert result.exit_code == 0
-    # logs/app.log only appears when -I overrides ignore patterns
-    assert "app.log" in result.output
+    # logs/logfile.log only appears when -I overrides ignore patterns
+    assert "logfile.log" in result.output
 
 
 def test_diff_ignored_file_excluded_by_default(tmp_path):
@@ -73,8 +73,8 @@ def test_diff_ignored_file_excluded_by_default(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "diff"])
     assert result.exit_code == 0
-    # logs/app.log must be hidden by default ignore
-    assert "app.log" not in result.output
+    # logs/logfile.log must be hidden by default ignore
+    assert "logfile.log" not in result.output
 
 
 def test_diff_identical_file_not_shown(tmp_path):
@@ -90,7 +90,7 @@ def test_diff_short_no_ignore(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "diff", "-s", "-I"])
     assert result.exit_code == 0
-    assert "app.log" in result.output
+    assert "logfile.log" in result.output
     assert "---" not in result.output
 
 
