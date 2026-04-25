@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `include` field in `.cfgr.yml` (root and child configs): optional allowlist of gitignore-style patterns scoped to the target directory; when present, only matching files are tracked; `include` is evaluated before `ignore`
+- Child `.cfgr.yml` files now support `include` in addition to `ignore`; patterns are matched relative to their subdirectory
+
+### Changed
+- `.cfgr.yml` is now expected to live **inside** the source directory; the containing directory is implicitly the source root — the `source` field has been removed
+- `README.md`: added `.cfgr.yml` Reference section covering all fields, child configs, and pattern-precedence rules; removed stale `source` field from Usage example
+
+### Added
 - `diff` command: colorized side-by-side output by default when stdout is a terminal (via `ydiff>=1.5`)
 - `diff --unified` / `-u`: output plain unified diff format instead of side-by-side
 - `diff --nocolor`: disable ANSI color output regardless of TTY; color is automatically disabled when stdout is not a terminal

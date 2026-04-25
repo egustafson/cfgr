@@ -23,6 +23,9 @@ class CfgrCtx:
         self._load_config()
         self._load_child_configs()
         self._root_matcher = pathspec.PathSpec.from_lines("gitignore", self._ignores)
+        self._root_include_matcher = (
+            pathspec.PathSpec.from_lines("gitignore", self._includes) if self._includes else None
+        )
 
     def _load_config(self):
         # cwd is already changed to base_dir
@@ -32,10 +35,12 @@ class CfgrCtx:
         self._target_dir = cfg["target"]
         self._source_dir = cfg.get("source", ".")
         self._ignores = cfg.get("ignore", [])
+        self._includes = cfg.get("include", [])
 
     def _load_child_configs(self):
         """Walk source dir and load any child .cfgr.yml files."""
         self._child_matchers = {}
+        self._child_include_matchers = {}
         for root, dirs, files in os.walk(self._source_dir):
             # Skip the root itself — only process subdirectories
             rel_root = os.path.relpath(root, self._source_dir)
@@ -53,20 +58,33 @@ class CfgrCtx:
                 self._child_matchers[rel_root] = pathspec.PathSpec.from_lines(
                     "gitignore", child_ignores
                 )
+                child_includes = cfg.get("include", []) if cfg else []
+                if child_includes:
+                    self._child_include_matchers[rel_root] = pathspec.PathSpec.from_lines(
+                        "gitignore", child_includes
+                    )
 
     def is_ignored(self, rel_path):
         """Return True if rel_path (relative to source_dir) matches any ignore pattern."""
+        # 1. Include list narrows the tracked set; if not matched, exclude.
+        if self._root_include_matcher is not None and not self._root_include_matcher.match_file(
+            rel_path
+        ):
+            return True
+        # 2. Ignore list further reduces the tracked set.
         if self._root_matcher.match_file(rel_path):
             return True
         # Check each ancestor subdir for child matchers
         parts = rel_path.replace(os.sep, "/").split("/")
         for depth in range(1, len(parts)):
             subdir = os.path.join(*parts[:depth])
-            matcher = self._child_matchers.get(subdir)
-            if matcher is not None:
-                # path relative to that subdir
+            ignore_matcher = self._child_matchers.get(subdir)
+            include_matcher = self._child_include_matchers.get(subdir)
+            if ignore_matcher is not None or include_matcher is not None:
                 rel_to_subdir = os.path.join(*parts[depth:])
-                if matcher.match_file(rel_to_subdir):
+                if include_matcher is not None and not include_matcher.match_file(rel_to_subdir):
+                    return True
+                if ignore_matcher is not None and ignore_matcher.match_file(rel_to_subdir):
                     return True
         return False
 

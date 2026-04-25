@@ -9,10 +9,10 @@ TEST_DATA = os.path.join(os.path.dirname(__file__), "..", "test_data")
 
 
 def _setup(tmp_path):
-    """Copy test_data into tmp_path and return the working dir path."""
+    """Copy test_data into tmp_path and return the source dir path."""
     dest = tmp_path / "td"
     shutil.copytree(TEST_DATA, dest)
-    return str(dest)
+    return str(dest / "source")
 
 
 def test_help():
@@ -130,13 +130,72 @@ def test_diff_nocolor_no_ansi(tmp_path):
 def test_child_cfgr_invalid_target(tmp_path):
     wd = _setup(tmp_path)
     # Inject an illegal 'target' key into the child config
-    child_cfg = os.path.join(wd, "source", "subdir", ".cfgr.yml")
+    child_cfg = os.path.join(wd, "subdir", ".cfgr.yml")
     with open(child_cfg, "w") as f:
         f.write("target: /some/path\n")
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "diff"])
     assert result.exit_code != 0
     assert "target" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# include
+# ---------------------------------------------------------------------------
+
+
+def test_include_limits_to_listed_file(tmp_path):
+    wd = _setup(tmp_path)
+    cfg = os.path.join(wd, ".cfgr.yml")
+    with open(cfg, "w") as f:
+        f.write("target: ../target\ninclude:\n  - base.ini\n")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
+    assert result.exit_code == 0
+    assert "base.ini" in result.output
+    assert "extension2.cfg" not in result.output
+
+
+def test_include_limits_to_listed_dir(tmp_path):
+    wd = _setup(tmp_path)
+    cfg = os.path.join(wd, ".cfgr.yml")
+    with open(cfg, "w") as f:
+        f.write("target: ../target\ninclude:\n  - subdir/\n")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
+    assert result.exit_code == 0
+    assert "extension2.cfg" in result.output
+    assert "base.ini" not in result.output
+
+
+def test_include_with_ignore(tmp_path):
+    wd = _setup(tmp_path)
+    cfg = os.path.join(wd, ".cfgr.yml")
+    with open(cfg, "w") as f:
+        f.write("target: ../target\ninclude:\n  - subdir/\nignore:\n  - subdir/extension2.cfg\n")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
+    assert result.exit_code == 0
+    assert "extension2.cfg" not in result.output
+    assert "base.ini" not in result.output
+
+
+def test_child_include_limits_subdir(tmp_path):
+    wd = _setup(tmp_path)
+    # Add a second differing file in subdir so we can distinguish include from identity filtering
+    with open(os.path.join(wd, "subdir", "extra.cfg"), "w") as f:
+        f.write("extra=src\n")
+    with open(os.path.join(wd, "..", "target", "subdir", "extra.cfg"), "w") as f:
+        f.write("extra=tgt\n")
+    child_cfg = os.path.join(wd, "subdir", ".cfgr.yml")
+    with open(child_cfg, "w") as f:
+        f.write("include:\n  - extension2.cfg\n")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
+    assert result.exit_code == 0
+    assert "extension2.cfg" in result.output
+    assert "extra.cfg" not in result.output
+    assert "base.ini" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -150,8 +209,8 @@ def test_push_copies_differing(tmp_path):
     result = runner.invoke(cli, ["-d", wd, "push"])
     assert result.exit_code == 0
     # After push, source and target base.ini must be identical
-    src = os.path.join(wd, "source", "base.ini")
-    tgt = os.path.join(wd, "target", "base.ini")
+    src = os.path.join(wd, "base.ini")
+    tgt = os.path.join(wd, "..", "target", "base.ini")
     with open(src) as f:
         src_content = f.read()
     with open(tgt) as f:
@@ -164,8 +223,8 @@ def test_push_explicit_file(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "push", "base.ini"])
     assert result.exit_code == 0
-    src = os.path.join(wd, "source", "base.ini")
-    tgt = os.path.join(wd, "target", "base.ini")
+    src = os.path.join(wd, "base.ini")
+    tgt = os.path.join(wd, "..", "target", "base.ini")
     with open(src) as f:
         src_content = f.read()
     with open(tgt) as f:
@@ -191,8 +250,8 @@ def test_pull_copies_differing(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "pull"])
     assert result.exit_code == 0
-    src = os.path.join(wd, "source", "base.ini")
-    tgt = os.path.join(wd, "target", "base.ini")
+    src = os.path.join(wd, "base.ini")
+    tgt = os.path.join(wd, "..", "target", "base.ini")
     with open(src) as f:
         src_content = f.read()
     with open(tgt) as f:
@@ -205,8 +264,8 @@ def test_pull_explicit_file(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "pull", "base.ini"])
     assert result.exit_code == 0
-    src = os.path.join(wd, "source", "base.ini")
-    tgt = os.path.join(wd, "target", "base.ini")
+    src = os.path.join(wd, "base.ini")
+    tgt = os.path.join(wd, "..", "target", "base.ini")
     with open(src) as f:
         src_content = f.read()
     with open(tgt) as f:

@@ -27,14 +27,8 @@ pip install cfgr
 
 ## Usage
 
-`cfgr` expects a `.cfgr.yml` configuration file in the working directory:
-
-```yaml
-target: /etc          # deployed location
-source: ./source      # version-controlled source tree
-ignore:
-  - logs/
-```
+`cfgr` requires a `.cfgr.yml` configuration file inside the source directory
+(the directory you pass to `--dir` or the current working directory):
 
 ```sh
 cfgr [--dir PATH] <command>
@@ -64,3 +58,59 @@ scripting or patch files.
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions.
+
+## `.cfgr.yml` Reference
+
+`cfgr` is configured by a `.cfgr.yml` file placed inside the **source
+directory** (the directory you point `--dir` at, or the current working
+directory). The directory that contains `.cfgr.yml` is implicitly the source
+tree root.
+
+### Root config (required)
+
+```yaml
+target: /etc          # path to the deployed location; relative paths are
+                      # resolved from the source directory
+
+include:              # optional — allowlist of files/directories to track.
+  - subdir/           # Entries are matched against target paths using
+  - base.ini          # gitignore-style patterns (pathspec library).
+                      # When omitted, all files are tracked.
+                      # include is evaluated before ignore.
+
+ignore:               # optional — denylist of files/directories to exclude.
+  - logs/             # Same gitignore-style pattern matching.
+  - "*.bak"           # Applied after include.
+```
+
+`target` is the only required field.  All others are optional.
+
+### Child configs
+
+Subdirectories of the source tree may contain their own `.cfgr.yml` files to
+provide directory-scoped overrides.  Child configs support `include` and
+`ignore`; the `target` field is **not allowed** and will cause an error.
+Patterns in a child config are matched relative to that subdirectory.
+
+```yaml
+# source/subdir/.cfgr.yml
+include:
+  - "*.cfg"
+
+ignore:
+  - "*.bak"
+```
+
+### Pattern precedence
+
+Filtering is applied in two passes:
+
+1. **Include** — if an `include` list is present, only files matching those
+   patterns are tracked; everything else is excluded.  If `include` is omitted,
+   all files are implicitly included.  Child configs apply the same rule scoped
+   to their subdirectory.
+2. **Ignore** — files that match an `ignore` pattern are excluded from the
+   tracked set, even if they were matched by `include`.  Child `ignore` patterns
+   are resolved relative to their subdirectory.
+
+Root-level patterns are evaluated before child-config patterns.
