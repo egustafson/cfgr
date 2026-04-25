@@ -12,7 +12,13 @@ def _setup(tmp_path):
     """Copy test_data into tmp_path and return the source dir path."""
     dest = tmp_path / "td"
     shutil.copytree(TEST_DATA, dest)
-    return str(dest / "source")
+    src = str(dest / "source")
+    # Rewrite .cfgr.yml with an absolute target path.
+    abs_target = str(dest / "target")
+    cfg = os.path.join(src, ".cfgr.yml")
+    with open(cfg, "w") as f:
+        f.write(f"target: {abs_target}\nignore:\n  - logs/\n")
+    return src
 
 
 def test_help():
@@ -26,7 +32,7 @@ def test_about():
     runner = CliRunner()
     result = runner.invoke(cli, ["about"])
     assert result.exit_code == 0
-    assert "0.9.0" in result.output
+    assert "0.10.0" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +152,10 @@ def test_child_cfgr_invalid_target(tmp_path):
 
 def test_include_limits_to_listed_file(tmp_path):
     wd = _setup(tmp_path)
+    abs_target = os.path.normpath(os.path.join(wd, "..", "target"))
     cfg = os.path.join(wd, ".cfgr.yml")
     with open(cfg, "w") as f:
-        f.write("target: ../target\ninclude:\n  - base.ini\n")
+        f.write(f"target: {abs_target}\ninclude:\n  - base.ini\n")
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
     assert result.exit_code == 0
@@ -158,9 +165,10 @@ def test_include_limits_to_listed_file(tmp_path):
 
 def test_include_limits_to_listed_dir(tmp_path):
     wd = _setup(tmp_path)
+    abs_target = os.path.normpath(os.path.join(wd, "..", "target"))
     cfg = os.path.join(wd, ".cfgr.yml")
     with open(cfg, "w") as f:
-        f.write("target: ../target\ninclude:\n  - subdir/\n")
+        f.write(f"target: {abs_target}\ninclude:\n  - subdir/\n")
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
     assert result.exit_code == 0
@@ -170,9 +178,12 @@ def test_include_limits_to_listed_dir(tmp_path):
 
 def test_include_with_ignore(tmp_path):
     wd = _setup(tmp_path)
+    abs_target = os.path.normpath(os.path.join(wd, "..", "target"))
     cfg = os.path.join(wd, ".cfgr.yml")
     with open(cfg, "w") as f:
-        f.write("target: ../target\ninclude:\n  - subdir/\nignore:\n  - subdir/extension2.cfg\n")
+        f.write(
+            f"target: {abs_target}\ninclude:\n  - subdir/\nignore:\n  - subdir/extension2.cfg\n"
+        )
     runner = CliRunner()
     result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
     assert result.exit_code == 0
@@ -292,3 +303,143 @@ def test_dbg(tmp_path):
     result = runner.invoke(cli, ["-d", wd, "dbg"])
     assert result.exit_code == 0
     assert "target:" in result.output
+
+
+# ---------------------------------------------------------------------------
+# init
+# ---------------------------------------------------------------------------
+
+
+def test_init_creates_config(tmp_path):
+    src = str(tmp_path / "source")
+    os.makedirs(src)
+    tgt = str(tmp_path / "target")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["init", tgt, "-D", src])
+    assert result.exit_code == 0
+    cfg = os.path.join(src, ".cfgr.yml")
+    assert os.path.isfile(cfg)
+    with open(cfg) as f:
+        content = f.read()
+    assert tgt in content
+
+
+def test_init_default_source_dir(tmp_path):
+    tgt = str(tmp_path / "target")
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as src:
+        result = runner.invoke(cli, ["init", tgt])
+        assert result.exit_code == 0
+        assert os.path.isfile(os.path.join(src, ".cfgr.yml"))
+
+
+def test_init_error_if_config_already_exists(tmp_path):
+    src = str(tmp_path / "source")
+    os.makedirs(src)
+    cfg = os.path.join(src, ".cfgr.yml")
+    with open(cfg, "w") as f:
+        f.write("target: /tmp/existing\n")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["init", "/tmp/target", "-D", src])
+    assert result.exit_code != 0
+    assert "already exists" in result.output
+
+
+def test_init_error_if_parent_has_config(tmp_path):
+    parent = tmp_path / "repo"
+    parent.mkdir()
+    child = parent / "subdir"
+    child.mkdir()
+    # Place a .cfgr.yml in the parent
+    (parent / ".cfgr.yml").write_text("target: /tmp/tgt\n")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["init", "/tmp/target", "-D", str(child)])
+    assert result.exit_code != 0
+    assert ".cfgr.yml" in result.output
+
+
+def test_init_error_if_target_is_relative(tmp_path):
+    src = str(tmp_path / "source")
+    os.makedirs(src)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["init", "relative/path", "-D", src])
+    assert result.exit_code != 0
+    assert "absolute" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# hostname
+# ---------------------------------------------------------------------------
+
+
+def _setup_with_hostname(tmp_path, hostname):
+    """Like _setup but writes hostname into .cfgr.yml."""
+    wd = _setup(tmp_path)
+    abs_target = os.path.normpath(os.path.join(wd, "..", "target"))
+    cfg = os.path.join(wd, ".cfgr.yml")
+    with open(cfg, "w") as f:
+        f.write(f"target: {abs_target}\nhostname: {hostname}\nignore:\n  - logs/\n")
+    return wd
+
+
+def test_hostname_match_allows_diff(tmp_path):
+    import socket
+
+    wd = _setup_with_hostname(tmp_path, socket.gethostname())
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
+    assert result.exit_code == 0
+
+
+def test_hostname_mismatch_warns_diff(tmp_path):
+    wd = _setup_with_hostname(tmp_path, "no-such-host.example.invalid")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
+    assert result.exit_code == 0
+    assert "mismatch" in result.output.lower()
+
+
+def test_hostname_mismatch_blocks_push(tmp_path):
+    wd = _setup_with_hostname(tmp_path, "no-such-host.example.invalid")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "push"])
+    assert result.exit_code != 0
+    assert "mismatch" in result.output.lower()
+
+
+def test_hostname_mismatch_blocks_pull(tmp_path):
+    wd = _setup_with_hostname(tmp_path, "no-such-host.example.invalid")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "pull"])
+    assert result.exit_code != 0
+    assert "mismatch" in result.output.lower()
+
+
+def test_hostname_mismatch_force_allows_push(tmp_path):
+    wd = _setup_with_hostname(tmp_path, "no-such-host.example.invalid")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "push", "--force", "base.ini"])
+    assert result.exit_code == 0
+    src = os.path.join(wd, "base.ini")
+    tgt = os.path.normpath(os.path.join(wd, "..", "target", "base.ini"))
+    with open(src) as f:
+        src_content = f.read()
+    with open(tgt) as f:
+        tgt_content = f.read()
+    assert src_content == tgt_content
+
+
+def test_hostname_liberal_match_short_vs_fqdn(tmp_path):
+    import socket
+
+    current = socket.gethostname()
+    short = current.split(".")[0]
+    # Configure a FQDN when current may be short, or short when current is FQDN
+    if "." in current:
+        configured = short  # short should match FQDN current
+    else:
+        configured = current + ".example.local"  # FQDN should match short current
+    wd = _setup_with_hostname(tmp_path, configured)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-d", wd, "diff", "-s"])
+    assert result.exit_code == 0

@@ -1,4 +1,5 @@
 import os
+import socket
 import sys
 import types
 from importlib.metadata import version as pkg_version
@@ -23,6 +24,19 @@ def cli(ctx, verbose, dir):
     ctx.obj["DIR"] = dir
 
 
+def _check_hostname(cx, force=False, warn_only=False):
+    """Warn on hostname mismatch; abort if not force (unless warn_only)."""
+    if cx.hostname is None:
+        return
+    current = socket.gethostname()
+    if not context.hostnames_match(cx.hostname, current):
+        msg = f"Hostname mismatch: config expects '{cx.hostname}', current host is '{current}'."
+        if warn_only or force:
+            click.echo(f"Warning: {msg}", err=True)
+        else:
+            raise click.ClickException(msg + " Use --force to override.")
+
+
 @click.command()
 def about():
     click.echo(pkg_version("cfgr"))
@@ -41,6 +55,7 @@ def about():
 @click.pass_context
 def diff(ctx, short, no_ignore, unified, nocolor, pager):
     cx = context.CfgrCtx(ctx.obj)
+    _check_hostname(cx, warn_only=True)
     pairs = ops.get_tracked_pairs(cx, no_ignore=no_ignore)
     use_color = sys.stdout.isatty() and not nocolor
     if pager and sys.stdout.isatty() and use_color:
@@ -92,6 +107,7 @@ def pull(ctx, force, files):
     if force and not files:
         raise click.UsageError("--force requires explicit file paths.")
     cx = context.CfgrCtx(ctx.obj)
+    _check_hostname(cx, force=force)
     if files:
         pairs = []
         for f in files:
@@ -128,6 +144,7 @@ def push(ctx, force, files):
     if force and not files:
         raise click.UsageError("--force requires explicit file paths.")
     cx = context.CfgrCtx(ctx.obj)
+    _check_hostname(cx, force=force)
     if files:
         pairs = []
         for f in files:
@@ -149,6 +166,49 @@ def push(ctx, force, files):
                 click.echo(f"pushed: {rel}")
 
 
+@click.command()
+@click.argument("target", type=click.Path())
+@click.option(
+    "-D",
+    "--source-dir",
+    default=".",
+    type=click.Path(exists=True, file_okay=False),
+    help="Source directory to initialise (default: current directory).",
+)
+def init(target, source_dir):
+    """Initialise a new .cfgr.yml in the source directory pointing at TARGET."""
+    if not os.path.isabs(target):
+        raise click.UsageError("TARGET must be an absolute path.")
+    source_dir = os.path.abspath(source_dir)
+    cfg_path = os.path.join(source_dir, context.CFGR_CFG)
+
+    if os.path.isfile(cfg_path):
+        raise click.ClickException(f"'{cfg_path}' already exists.")
+
+    # Walk up through parent directories — none may contain a .cfgr.yml.
+    parent = os.path.dirname(source_dir)
+    while True:
+        if os.path.isfile(os.path.join(parent, context.CFGR_CFG)):
+            raise click.ClickException(
+                f"Parent directory '{parent}' already contains a {context.CFGR_CFG}."
+            )
+        next_parent = os.path.dirname(parent)
+        if next_parent == parent:
+            break
+        parent = next_parent
+
+    from yaml import dump
+
+    try:
+        from yaml import CDumper as Dumper
+    except ImportError:
+        from yaml import Dumper
+
+    with open(cfg_path, "w") as f:
+        dump({"target": target}, f, Dumper=Dumper, default_flow_style=False)
+    click.echo(f"Initialized {cfg_path}")
+
+
 @click.command(hidden=True)
 @click.pass_context
 def dbg(ctx):
@@ -165,6 +225,7 @@ def dbg(ctx):
 
 cli.add_command(about)
 cli.add_command(diff)
+cli.add_command(init)
 cli.add_command(pull)
 cli.add_command(push)
 cli.add_command(dbg)

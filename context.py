@@ -33,9 +33,14 @@ class CfgrCtx:
         with open(cfg_file) as f:
             cfg = load(f, Loader=Loader)
         self._target_dir = cfg["target"]
+        if not os.path.isabs(self._target_dir):
+            raise click.ClickException(
+                f"'target' in {CFGR_CFG} must be an absolute path (got: '{self._target_dir}')."
+            )
         self._source_dir = cfg.get("source", ".")
         self._ignores = cfg.get("ignore", [])
         self._includes = cfg.get("include", [])
+        self._hostname = cfg.get("hostname", None)
 
     def _load_child_configs(self):
         """Walk source dir and load any child .cfgr.yml files."""
@@ -128,3 +133,21 @@ class CfgrCtx:
     @property
     def source_files(self):
         return self._list_source_files()
+
+    @property
+    def hostname(self):
+        return self._hostname
+
+
+def hostnames_match(config_host, current_host):
+    """Return True if config_host and current_host refer to the same machine.
+
+    Matching is liberal: if either name is a short hostname (no dots), only
+    the first component of the other is compared.  Comparison is
+    case-insensitive.
+    """
+    c = config_host.lower()
+    h = current_host.lower()
+    if c == h:
+        return True
+    return c.split(".")[0] == h.split(".")[0]

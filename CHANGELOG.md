@@ -7,39 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-24
+
 ### Added
 - `include` field in `.cfgr.yml` (root and child configs): optional allowlist of gitignore-style patterns scoped to the target directory; when present, only matching files are tracked; `include` is evaluated before `ignore`
 - Child `.cfgr.yml` files now support `include` in addition to `ignore`; patterns are matched relative to their subdirectory
-
-### Changed
-- `.cfgr.yml` is now expected to live **inside** the source directory; the containing directory is implicitly the source root — the `source` field has been removed
-- `README.md`: added `.cfgr.yml` Reference section covering all fields, child configs, and pattern-precedence rules; removed stale `source` field from Usage example
-
-### Added
+- `init` command: initialises a new source directory by writing a `.cfgr.yml` with the given target path; accepts `-D` to specify the source directory; errors if a config already exists in the source dir or any ancestor directory
+- `hostname` field in `.cfgr.yml` (optional): short or FQDN hostname; `diff` emits a warning on mismatch; `push` and `pull` abort on mismatch unless `--force` is given; matching is liberal (first hostname component only, case-insensitive)
+- `target` field in `.cfgr.yml` must now be an absolute path; a relative path raises an error
 - `diff` command: colorized side-by-side output by default when stdout is a terminal (via `ydiff>=1.5`)
 - `diff --unified` / `-u`: output plain unified diff format instead of side-by-side
 - `diff --nocolor`: disable ANSI color output regardless of TTY; color is automatically disabled when stdout is not a terminal
 - `diff --pager` / `--no-pager`: opt-in to pipe output through `less` using ydiff's pager integration (default: off)
 - `ops.render_diff()`: new function wrapping ydiff's `DiffParser`/`DiffMarker` API
 - `ydiff>=1.5` runtime dependency
+- GitHub Actions `release` workflow (`.github/workflows/release.yml`): triggered on release publication; runs lint, tests, builds the wheel, and uploads it as a release asset
 
 ### Changed
+- `.cfgr.yml` is now expected to live **inside** the source directory; the containing directory is implicitly the source root — the `source` field has been removed
+- `README.md`: added `.cfgr.yml` Reference section covering all fields, child configs, and pattern-precedence rules
+- Minimum Python version raised from 3.8 to 3.10
+- Dependency lower bounds updated: `click>=8.3.3`, `PyYAML>=6.0.3`, `pathspec>=1.1.0`; dev: `pytest>=9.0.3`, `ruff>=0.15.12`
 - `diff` command default output changed from plain unified diff to colorized side-by-side; use `--unified --nocolor` for original plain behavior
-- `README.md`: added `diff` options table and output-mode description
+- `Makefile`: `install` target updated to use `uv tool install .`; added `pre-release`, `build`, and updated `clean` targets
 
 ### Fixed
-- Wrapped long `@click.option` decorator lines and `click.confirm` calls in `cfgr.py` to satisfy the 100-character line-length limit enforced by `ruff`
+- Wrapped long `@click.option` decorator lines in `cfgr.py` to satisfy the 100-character line-length limit enforced by `ruff`
 - Corrected import sort order in `ops.py` and `tests/test_cfgr.py` per `ruff` `I001` rules
-- Added explicit `[tool.hatch.build.targets.wheel]` include list to `pyproject.toml` so that `context.py`, `filetree.py`, and `ops.py` are packaged alongside `cfgr.py`; previously only `cfgr.py` was included, causing `ModuleNotFoundError` when the tool was installed via `uv tool install`
-- Fixed CI test failures: tests referenced `app.log` (a gitignored local-only file) rather than the committed `logfile.log`; updated `test_diff_no_ignore`, `test_diff_ignored_file_excluded_by_default`, and `test_diff_short_no_ignore` to assert against `logfile.log`
-
-### Changed
-- `Makefile`: `install` target updated to use `uv tool install .` (was `uv pip install .`)
-- `Makefile`: added `pre-release` target (runs `lint` then `test`), `build` target (`uv build --wheel`), `dist` added to `clean`, and `clean`/`build` added to `.PHONY`
-- `Makefile`: `clean` target now also removes `dist/`
-
-### Added
-- GitHub Actions `release` workflow (`.github/workflows/release.yml`): triggered on release publication; runs lint, tests, builds the wheel, and uploads it as a release asset
+- Added explicit `[tool.hatch.build.targets.wheel]` include list to `pyproject.toml` so that `context.py`, `filetree.py`, and `ops.py` are packaged alongside `cfgr.py`
+- Fixed CI test failures caused by reference to gitignored `app.log`; updated tests to assert against `logfile.log`
 
 ## [0.9.0] - 2026-04-07
 
@@ -84,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cfgr` CLI entry point
 - Diff, push, and pull functionality between managed config files and deployed locations
 
-[Unreleased]: https://github.com/egustafson/cfgr/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/egustafson/cfgr/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/egustafson/cfgr/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/egustafson/cfgr/compare/v0.1.0...v0.9.0
 [0.1.0]: https://github.com/egustafson/cfgr/releases/tag/v0.1.0

@@ -1,7 +1,7 @@
 # cfgr
 
 [![CI](https://github.com/egustafson/cfgr/actions/workflows/ci.yml/badge.svg)](https://github.com/egustafson/cfgr/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A configuration file manager and diff tool.
@@ -36,9 +36,21 @@ cfgr [--dir PATH] <command>
 Commands:
   about      Print program information
   diff       Show differences between source and target
+  init       Initialise a new source directory with a .cfgr.yml
   pull       Pull changes from target into source
   push       Push changes from source to target
 ```
+
+### init options
+
+`cfgr init TARGET` creates a `.cfgr.yml` in the source directory pointing at
+`TARGET`.  It is an error to initialise a directory that already contains a
+`.cfgr.yml` or whose parent tree already contains one.
+
+| Option | Description |
+|--------|-------------|
+| `TARGET` | Absolute path to the deployed (target) directory — recorded in `.cfgr.yml` |
+| `-D PATH` | Source directory to initialise (default: current directory) |
 
 ### diff options
 
@@ -69,8 +81,13 @@ tree root.
 ### Root config (required)
 
 ```yaml
-target: /etc          # path to the deployed location; relative paths are
-                      # resolved from the source directory
+target: /etc          # path to the deployed location; must be an absolute path.
+
+hostname: myhost      # optional — short or FQDN hostname of the machine this
+                      # config is intended for.  diff emits a warning when the
+                      # current hostname does not match; push and pull abort
+                      # unless --force is given.  Matching is liberal: only the
+                      # first hostname component is compared.
 
 include:              # optional — allowlist of files/directories to track.
   - subdir/           # Entries are matched against target paths using
